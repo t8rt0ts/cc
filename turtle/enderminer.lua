@@ -36,8 +36,12 @@ local pickaxeId = 'minecraft:diamond_pickaxe'
 local scannerId = 'advancedperipherals:geo_scanner'
 local enderWirelessModemId = 'computercraft:wireless_modem_advanced'
 local lavaBucketId = 'minecraft:lava_bucket'
+local enderBagId = "peripherals:ender_bag"
 
 ---- BEGIN CONFIG ----
+
+local enderRefuelSlot = 26
+local enderDumpSlot = 27
 
 local currentLevel = 82
 
@@ -292,6 +296,14 @@ local function cleanInventory()
 	local flag = false
 	local details = {}
 	local items = {}
+	if not peripheral.hasType('left', 'ender_bag') then
+		if not selectItem(enderBagId) then
+			printError('Ender Bag not found')
+			return nil, 'Ender Bag not found'
+		end
+		turtle.equipLeft()
+	end
+	local enderBag = peripheral.wrap('left')
 	for i = 1, 16 do
 		local detail = turtle.getItemDetail(i)
 		if detail then
@@ -310,9 +322,13 @@ local function cleanInventory()
 						turtle.dropDown(detail.count)
 					end
 					flag = true
-				elseif not targetItems[name] and name ~= pickaxeId and name ~= scannerId and name ~= enderWirelessModemId and name ~= lavaBucketId then
-					turtle.select(i)
-					turtle.dropDown(detail.count)
+				elseif name ~= pickaxeId and name ~= scannerId and name ~= enderWirelessModemId and name ~= lavaBucketId and name ~= enderBagId then
+					while enderBag.getItemDetail(enderDumpSlot) do
+						sleep(0) --waiting until dump is empty (might be a bad idea in terms of speed but whatever)
+					end
+					enderBag.pullItems(i,detail.count,enderDumpSlot)
+					-- turtle.select(i)
+					-- turtle.dropDown(detail.count)
 				end
 				detail.count = turtle.getItemCount(i)
 				detail.space = turtle.getItemSpace(i)
@@ -551,10 +567,12 @@ end
 
 local function refuel()
 	action = 'refuel'
+	--TODO: Pull lava from ender chest
 	shell.run('lava_refueler')
 	if turtle.getFuelLevel() * 2 < limit then
 		return false
 	end
+	--TODO: dump buckets to ender chest
 	action = nil
 	return true
 end
